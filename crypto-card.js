@@ -22,7 +22,7 @@ const THEMES = {
     red: '#ff5252',
   },
   light: {
-    bg: 'linear-gradient(160deg, #f5f7fa 0%, #eef0f4 100%)',
+    bg: '#ffffff',
     border: 'rgba(0,0,0,0.07)',
     text: 'rgba(0,0,0,0.87)',
     muted: 'rgba(0,0,0,0.4)',
