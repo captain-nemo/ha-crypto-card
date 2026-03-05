@@ -114,6 +114,9 @@ class CryptoCard extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>
         :host { display: block; }
+        ha-card {
+          background: ${t.bg} !important;
+        }
         .card {
           background: ${t.bg};
           border-radius: 12px;
