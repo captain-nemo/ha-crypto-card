@@ -3,6 +3,43 @@
  * Candlestick chart via Binance API (BTC/ETH)
  */
 
+const THEMES = {
+  dark: {
+    bg: 'linear-gradient(160deg, #0a0f1a 0%, #0a0a0f 100%)',
+    border: 'rgba(255,255,255,0.05)',
+    text: 'rgba(255,255,255,0.87)',
+    muted: 'rgba(255,255,255,0.4)',
+    mutedMore: 'rgba(255,255,255,0.25)',
+    tabActive: '#4fc3f7',
+    tabActiveFg: '#000',
+    btnActive: 'rgba(79,195,247,0.15)',
+    btnActiveFg: '#4fc3f7',
+    btnActiveBorder: '#4fc3f7',
+    gridLine: 'rgba(255,255,255,0.05)',
+    gridLabel: 'rgba(84,110,122,0.9)',
+    lastLine: 'rgba(79,195,247,0.5)',
+    green: '#69f0ae',
+    red: '#ff5252',
+  },
+  light: {
+    bg: 'linear-gradient(160deg, #f5f7fa 0%, #eef0f4 100%)',
+    border: 'rgba(0,0,0,0.07)',
+    text: 'rgba(0,0,0,0.87)',
+    muted: 'rgba(0,0,0,0.4)',
+    mutedMore: 'rgba(0,0,0,0.25)',
+    tabActive: '#0288d1',
+    tabActiveFg: '#fff',
+    btnActive: 'rgba(2,136,209,0.12)',
+    btnActiveFg: '#0288d1',
+    btnActiveBorder: '#0288d1',
+    gridLine: 'rgba(0,0,0,0.06)',
+    gridLabel: 'rgba(80,100,110,0.9)',
+    lastLine: 'rgba(2,136,209,0.5)',
+    green: '#2e7d32',
+    red: '#c62828',
+  },
+};
+
 class CryptoCard extends HTMLElement {
   constructor() {
     super();
@@ -11,6 +48,13 @@ class CryptoCard extends HTMLElement {
     this._interval = '4h';
     this._bars = 60;
     this._timer = null;
+    this._darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    this._theme = this._darkQuery.matches ? THEMES.dark : THEMES.light;
+    this._darkQuery.addEventListener('change', e => {
+      this._theme = e.matches ? THEMES.dark : THEMES.light;
+      this._applyTheme();
+      if (this._lastCandles) this._drawCandlesticks(this._lastCandles);
+    });
   }
 
   setConfig(config) {
@@ -38,18 +82,47 @@ class CryptoCard extends HTMLElement {
     if (this._timer) clearInterval(this._timer);
   }
 
+  _applyTheme() {
+    const t = this._theme;
+    const card = this.shadowRoot.querySelector('.card');
+    if (!card) return;
+    card.style.background = t.bg;
+    card.style.color = t.text;
+    this.shadowRoot.querySelector('.header').style.borderBottomColor = t.border;
+    this.shadowRoot.querySelector('.controls').style.borderTopColor = t.border;
+    this.shadowRoot.querySelectorAll('.tab').forEach(el => {
+      const active = el.classList.contains('active');
+      el.style.background = active ? t.tabActive : 'transparent';
+      el.style.color = active ? t.tabActiveFg : t.muted;
+      el.style.borderColor = active ? t.tabActive : t.border;
+    });
+    this.shadowRoot.querySelectorAll('.ctrl-btn').forEach(el => {
+      const active = el.classList.contains('active');
+      el.style.background = active ? t.btnActive : 'transparent';
+      el.style.color = active ? t.btnActiveFg : t.muted;
+      el.style.borderColor = active ? t.btnActiveBorder : t.border;
+    });
+    this.shadowRoot.querySelectorAll('.ctrl-label').forEach(el => el.style.color = t.muted);
+    const upd = this.shadowRoot.getElementById('updated');
+    if (upd) upd.style.color = t.mutedMore;
+    const price = this.shadowRoot.getElementById('price');
+    if (price) price.style.color = t.text;
+  }
+
   _render() {
+    const t = this._theme;
     this.shadowRoot.innerHTML = `
       <style>
         :host { display: block; }
         .card {
-          background: linear-gradient(160deg, #0a0f1a 0%, #0a0a0f 100%);
+          background: ${t.bg};
           border-radius: 12px;
           padding: 0;
           overflow: hidden;
           font-family: system-ui, -apple-system, sans-serif;
-          color: rgba(255,255,255,0.87);
+          color: ${t.text};
           user-select: none;
+          transition: background 0.3s, color 0.3s;
         }
         .header {
           display: flex;
@@ -58,56 +131,46 @@ class CryptoCard extends HTMLElement {
           gap: 8px;
           height: 42px;
           box-sizing: border-box;
-          border-bottom: 1px solid rgba(255,255,255,0.05);
+          border-bottom: 1px solid ${t.border};
         }
         .tabs { display: flex; gap: 6px; }
         .tab {
           padding: 3px 12px;
           border-radius: 6px;
-          border: 1px solid rgba(255,255,255,0.1);
+          border: 1px solid ${t.border};
           font-size: 12px;
           font-weight: 600;
-          color: rgba(255,255,255,0.4);
+          color: ${t.muted};
           cursor: pointer;
           transition: all 0.2s;
           background: transparent;
         }
         .tab.active {
-          background: #4fc3f7;
-          color: #000;
-          border-color: #4fc3f7;
+          background: ${t.tabActive};
+          color: ${t.tabActiveFg};
+          border-color: ${t.tabActive};
         }
-        .price-info {
-          flex: 1;
-          text-align: right;
-        }
+        .price-info { flex: 1; text-align: right; }
         .price {
           font-size: 20px;
           font-weight: 200;
-          color: rgba(255,255,255,0.87);
+          color: ${t.text};
         }
-        .change {
-          font-size: 12px;
-          margin-left: 6px;
-          font-weight: 500;
-        }
-        .change.pos { color: #69f0ae; }
-        .change.neg { color: #ff5252; }
-        canvas {
-          display: block;
-          width: 100%;
-        }
+        .change { font-size: 12px; margin-left: 6px; font-weight: 500; }
+        .change.pos { color: ${t.green}; }
+        .change.neg { color: ${t.red}; }
+        canvas { display: block; width: 100%; }
         .controls {
           display: flex;
           align-items: center;
           justify-content: space-between;
           padding: 5px 12px 7px;
-          border-top: 1px solid rgba(255,255,255,0.05);
+          border-top: 1px solid ${t.border};
         }
         .ctrl-group { display: flex; gap: 4px; align-items: center; }
         .ctrl-label {
           font-size: 9px;
-          color: rgba(255,255,255,0.3);
+          color: ${t.muted};
           margin-right: 2px;
           letter-spacing: 1px;
           text-transform: uppercase;
@@ -115,28 +178,19 @@ class CryptoCard extends HTMLElement {
         .ctrl-btn {
           padding: 3px 8px;
           border-radius: 5px;
-          border: 1px solid rgba(255,255,255,0.1);
+          border: 1px solid ${t.border};
           font-size: 11px;
-          color: rgba(255,255,255,0.4);
+          color: ${t.muted};
           cursor: pointer;
           transition: all 0.2s;
           background: transparent;
         }
         .ctrl-btn.active {
-          background: rgba(79,195,247,0.15);
-          color: #4fc3f7;
-          border-color: #4fc3f7;
+          background: ${t.btnActive};
+          color: ${t.btnActiveFg};
+          border-color: ${t.btnActiveBorder};
         }
-        .updated {
-          font-size: 10px;
-          color: rgba(255,255,255,0.25);
-        }
-        .error-msg {
-          text-align: center;
-          color: rgba(255,255,255,0.3);
-          font-size: 12px;
-          padding: 40px 0;
-        }
+        .updated { font-size: 10px; color: ${t.mutedMore}; }
       </style>
       <ha-card>
         <div class="card">
@@ -220,6 +274,7 @@ class CryptoCard extends HTMLElement {
         const now = new Date();
         updatedEl.textContent = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
       }
+      this._lastCandles = candles;
       this._drawCandlesticks(candles);
     } catch (err) {
       const canvas = this.shadowRoot.getElementById('chart');
@@ -266,11 +321,13 @@ class CryptoCard extends HTMLElement {
     const step   = chartW / candles.length;
     const bodyW  = Math.max(1, Math.floor(step * 0.65));
 
+    const t = this._theme;
+
     // Grid
-    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.strokeStyle = t.gridLine;
     ctx.lineWidth = 1;
     ctx.font = '9px system-ui';
-    ctx.fillStyle = 'rgba(84,110,122,0.9)';
+    ctx.fillStyle = t.gridLabel;
     ctx.textAlign = 'left';
     for (let i = 0; i <= 3; i++) {
       const y = PAD_T + (chartH / 3) * i;
@@ -285,7 +342,7 @@ class CryptoCard extends HTMLElement {
     candles.forEach((c, i) => {
       const cx    = PAD_L + step * i + step / 2;
       const isUp  = c.c >= c.o;
-      const color = isUp ? '#69f0ae' : '#ff5252';
+      const color = isUp ? t.green : t.red;
       const top   = toY(Math.max(c.o, c.c));
       const bot   = toY(Math.min(c.o, c.c));
       ctx.fillStyle = ctx.strokeStyle = color;
@@ -300,7 +357,7 @@ class CryptoCard extends HTMLElement {
     // Last price dashed line
     const ly = toY(candles[candles.length - 1].c);
     ctx.setLineDash([3, 3]);
-    ctx.strokeStyle = 'rgba(79,195,247,0.5)';
+    ctx.strokeStyle = t.lastLine;
     ctx.beginPath();
     ctx.moveTo(PAD_L, ly);
     ctx.lineTo(W - PAD_R + 4, ly);
