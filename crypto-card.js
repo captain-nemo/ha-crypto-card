@@ -14,7 +14,7 @@ const QUOTE_PREFIX = { USDT: '$', USDC: '$', EUR: '€', BTC: '₿', ETH: 'Ξ' }
 
 const THEMES = {
   dark: {
-    bg: 'linear-gradient(160deg, #0a0f1a 0%, #0a0a0f 100%)',
+    bg: 'var(--ha-card-background, var(--card-background-color, #1c1c1e))',
     border: 'rgba(255,255,255,0.05)',
     text: 'rgba(255,255,255,0.87)',
     muted: 'rgba(255,255,255,0.4)',
@@ -31,7 +31,7 @@ const THEMES = {
     red: '#ff5252',
   },
   light: {
-    bg: '#ffffff',
+    bg: 'var(--ha-card-background, var(--card-background-color, #ffffff))',
     border: 'rgba(0,0,0,0.07)',
     text: 'rgba(0,0,0,0.87)',
     muted: 'rgba(0,0,0,0.4)',
@@ -234,7 +234,7 @@ class CryptoCard extends HTMLElement {
     const t = this._theme;
     const card = this.shadowRoot.querySelector('.card');
     if (!card) return;
-    card.style.background = t.bg;
+    card.style.background = 'var(--ha-card-background, var(--card-background-color))';
     card.style.color = t.text;
     const header = this.shadowRoot.querySelector('.header');
     if (header) header.style.borderBottomColor = t.border;
@@ -265,10 +265,10 @@ class CryptoCard extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>
         :host { display: block; }
-        ha-card { background: ${t.bg} !important; }
+        ha-card { background: var(--ha-card-background, var(--card-background-color)) !important; border-radius: var(--ha-card-border-radius, 12px) !important; }
         .card {
-          background: ${t.bg};
-          border-radius: 12px;
+          background: transparent;
+          border-radius: var(--ha-card-border-radius, 12px);
           padding: 0;
           overflow: hidden;
           font-family: system-ui, -apple-system, sans-serif;
