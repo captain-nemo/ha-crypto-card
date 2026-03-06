@@ -206,6 +206,15 @@ class CryptoCard extends HTMLElement {
       this._interval = this._intervalButtons[0];
     if (this._barsButtons.length && !this._barsButtons.includes(this._bars))
       this._bars = this._barsButtons[0];
+
+    // Restore last user selection from localStorage
+    const _key = 'crypto-card:' + (this._config.coins || ['BTC']).join(',') + ':' + (this._config.quote || 'USDT');
+    try {
+      const saved = JSON.parse(localStorage.getItem(_key) || '{}');
+      if (saved.interval && this._intervalButtons.includes(saved.interval)) this._interval = saved.interval;
+      if (saved.bars && this._barsButtons.includes(Number(saved.bars))) this._bars = Number(saved.bars);
+    } catch(e) {}
+    this._storageKey = _key;
     this._showVolume = config.show_volume || false;
     this._refresh = config.refresh !== undefined ? config.refresh : 60;    this._title = config.title || null;
     this._render();
@@ -377,6 +386,7 @@ class CryptoCard extends HTMLElement {
       el.addEventListener('click', () => {
         this._interval = el.dataset.interval;
         this.shadowRoot.querySelectorAll('[data-interval]').forEach(b => b.classList.toggle('active', b.dataset.interval === this._interval));
+        try { const s = JSON.parse(localStorage.getItem(this._storageKey)||'{}'); s.interval = this._interval; localStorage.setItem(this._storageKey, JSON.stringify(s)); } catch(e) {}
         this._fetchCrypto();
       });
     });
@@ -384,6 +394,7 @@ class CryptoCard extends HTMLElement {
       el.addEventListener('click', () => {
         this._bars = parseInt(el.dataset.bars);
         this.shadowRoot.querySelectorAll('[data-bars]').forEach(b => b.classList.toggle('active', parseInt(b.dataset.bars) === this._bars));
+        try { const s = JSON.parse(localStorage.getItem(this._storageKey)||'{}'); s.bars = this._bars; localStorage.setItem(this._storageKey, JSON.stringify(s)); } catch(e) {}
         this._fetchCrypto();
       });
     });
