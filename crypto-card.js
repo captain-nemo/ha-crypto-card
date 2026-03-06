@@ -208,13 +208,13 @@ class CryptoCard extends HTMLElement {
       this._bars = this._barsButtons[0];
 
     // Restore last user selection from localStorage
-    const _key = 'crypto-card:' + (this._config.coins || ['BTC']).join(',') + ':' + (this._config.quote || 'USDT');
+    const _key = 'crypto-card:' + this._coins.join(',') + ':' + this._quote;
+    this._storageKey = _key;
     try {
       const saved = JSON.parse(localStorage.getItem(_key) || '{}');
       if (saved.interval && this._intervalButtons.includes(saved.interval)) this._interval = saved.interval;
       if (saved.bars && this._barsButtons.includes(Number(saved.bars))) this._bars = Number(saved.bars);
-    } catch(e) {}
-    this._storageKey = _key;
+    } catch(e) { console.warn('[crypto-card] localStorage not available:', e); }
     this._showVolume = config.show_volume || false;
     this._refresh = config.refresh !== undefined ? config.refresh : 60;    this._title = config.title || null;
     this._render();
