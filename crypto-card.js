@@ -78,7 +78,7 @@ class CryptoCardEditor extends HTMLElement {
       },
       {
         name: 'interval',
-        label: 'Default interval',
+        label: 'Candle interval',
         selector: {
           select: {
             options: [
@@ -120,11 +120,6 @@ class CryptoCardEditor extends HTMLElement {
         selector: { boolean: {} },
       },
       {
-        name: 'refresh',
-        label: 'Auto-refresh interval',
-        selector: { number: { min: 0, max: 3600, step: 30, unit_of_measurement: 'seconds' } },
-      },
-      {
         name: 'title',
         label: 'Card title (optional)',
         selector: { text: {} },
@@ -146,7 +141,6 @@ class CryptoCardEditor extends HTMLElement {
       interval_buttons: this._config.interval_buttons || ['1h','4h','1d'],
       bars_buttons: (this._config.bars_buttons || [30,60,90]).map(String),
       show_volume: this._config.show_volume || false,
-      refresh: this._config.refresh !== undefined ? this._config.refresh : 60,
       title: this._config.title || '',
     };
     form.hass = this.hass;
@@ -161,7 +155,6 @@ class CryptoCardEditor extends HTMLElement {
         interval_buttons: Array.isArray(d.interval_buttons) ? d.interval_buttons : ['1h','4h','1d'],
         bars_buttons: Array.isArray(d.bars_buttons) ? d.bars_buttons.map(Number) : [30,60,90],
         show_volume: d.show_volume,
-        refresh: d.refresh,
         ...(d.title ? { title: d.title } : {}),
       };      if (d.title) newConfig.title = d.title;
       clearTimeout(this._debounce);
