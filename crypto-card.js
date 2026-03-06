@@ -148,10 +148,7 @@ class CryptoCardEditor extends HTMLElement {
       bars: this._config.bars || 60,
       bars_buttons: (this._config.bars_buttons || [30,60,90]).map(String),
       show_volume: this._config.show_volume || false,
-      refresh: this._config.refresh !== undefined ? this._config.refresh : 60,
-      bull_color: this._config.bull_color || '',
-      bear_color: this._config.bear_color || '',
-      title: this._config.title || '',
+      refresh: this._config.refresh !== undefined ? this._config.refresh : 60,      title: this._config.title || '',
     };
     form.hass = this.hass;
 
@@ -167,10 +164,7 @@ class CryptoCardEditor extends HTMLElement {
         bars_buttons: Array.isArray(d.bars_buttons) ? d.bars_buttons.map(Number) : [30,60,90],
         show_volume: d.show_volume,
         refresh: d.refresh,
-      };
-      if (d.bull_color) newConfig.bull_color = d.bull_color;
-      if (d.bear_color) newConfig.bear_color = d.bear_color;
-      if (d.title) newConfig.title = d.title;
+      };      if (d.title) newConfig.title = d.title;
       this.dispatchEvent(new CustomEvent('config-changed', {
         detail: { config: newConfig },
         bubbles: true,
@@ -197,8 +191,6 @@ class CryptoCard extends HTMLElement {
     this._barsButtons = [30,60,90];
     this._showVolume = false;
     this._refresh = 60;
-    this._bullColor = null;
-    this._bearColor = null;
     this._title = null;
     this._timer = null;
     this._darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -240,10 +232,7 @@ class CryptoCard extends HTMLElement {
     if (this._barsButtons.length && !this._barsButtons.includes(this._bars))
       this._bars = this._barsButtons[0];
     this._showVolume = config.show_volume || false;
-    this._refresh = config.refresh !== undefined ? config.refresh : 60;
-    this._bullColor = config.bull_color || null;
-    this._bearColor = config.bear_color || null;
-    this._title = config.title || null;
+    this._refresh = config.refresh !== undefined ? config.refresh : 60;    this._title = config.title || null;
     this._render();
   }
 
@@ -494,8 +483,8 @@ class CryptoCard extends HTMLElement {
 
     const t = this._theme;
     const prefix = QUOTE_PREFIX[this._quote] || '';
-    const bullColor = this._bullColor || t.green;
-    const bearColor = this._bearColor || t.red;
+    const bullColor = t.green;
+    const bearColor = t.red;
 
     const VOL_H   = this._showVolume ? Math.floor(H * 0.2) : 0;
     const PAD_L   = 4, PAD_R = 44, PAD_T = 10, PAD_B = 16;
