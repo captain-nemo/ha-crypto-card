@@ -27,9 +27,6 @@ Toggle an optional volume overlay at the bottom of the chart.
 ### ⏱ More Intervals
 All Binance intervals now available: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1w, 1M.
 
-### 🎨 Custom Colors
-Set your own bull and bear candle colors.
-
 ### ⚙️ Flexible Refresh
 Configure auto-refresh from 30 seconds to 60 minutes, or disable it entirely.
 
@@ -44,7 +41,6 @@ Configure auto-refresh from 30 seconds to 60 minutes, or disable it entirely.
 - ⏱ **All Binance intervals** — 1m through 1M
 - 📊 **Optional volume bars** — toggle a volume overlay
 - 🔄 **Configurable auto-refresh** — or disable it entirely
-- 🎨 **Custom candle colors** — set your own bull/bear palette
 - 🌙 **Dark mode ready** — fits seamlessly into HA's dark theme
 - 🔑 **No API key needed** — uses Binance's public endpoints
 - 🖱 **Visual card editor** — configure everything from the HA UI
@@ -111,8 +107,6 @@ bars_buttons:
   - 120
 show_volume: true
 refresh: 120
-bull_color: "#00e676"
-bear_color: "#ff1744"
 title: My Portfolio
 ```
 
@@ -126,8 +120,6 @@ title: My Portfolio
 | `bars_buttons` | `list` | `[30, 60, 90]` | Which bar count buttons to show |
 | `show_volume` | `boolean` | `false` | Show volume bars below chart |
 | `refresh` | `number` | `60` | Auto-refresh in seconds (0 = off) |
-| `bull_color` | `string` | theme green | Up candle color (hex) |
-| `bear_color` | `string` | theme red | Down candle color (hex) |
 | `title` | `string` | — | Optional card title |
 
 ---
