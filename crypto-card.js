@@ -82,8 +82,13 @@ class CryptoCardEditor extends HTMLElement {
       },
       {
         name: 'interval_buttons',
-        label: 'Interval buttons (comma-separated, e.g. 1h,4h,1d)',
-        selector: { text: {} },
+        label: 'Interval buttons',
+        selector: {
+          select: {
+            multiple: true,
+            options: ['1m','5m','15m','30m','1h','2h','4h','8h','12h','1d','3d','1w','1M'],
+          },
+        },
       },
       {
         name: 'bars',
@@ -92,8 +97,13 @@ class CryptoCardEditor extends HTMLElement {
       },
       {
         name: 'bars_buttons',
-        label: 'Bar count buttons (comma-separated, e.g. 30,60,90)',
-        selector: { text: {} },
+        label: 'Bar count buttons',
+        selector: {
+          select: {
+            multiple: true,
+            options: ['10','20','30','50','60','90','100','120','150','200'],
+          },
+        },
       },
       {
         name: 'show_volume',
@@ -134,9 +144,9 @@ class CryptoCardEditor extends HTMLElement {
       coins: (this._config.coins || ['BTC', 'ETH']).join(','),
       quote: this._config.quote || 'USDT',
       interval: this._config.interval || '4h',
-      interval_buttons: (this._config.interval_buttons || ['1h','4h','1d']).join(','),
+      interval_buttons: this._config.interval_buttons || ['1h','4h','1d'],
       bars: this._config.bars || 60,
-      bars_buttons: (this._config.bars_buttons || [30,60,90]).join(','),
+      bars_buttons: (this._config.bars_buttons || [30,60,90]).map(String),
       show_volume: this._config.show_volume || false,
       refresh: this._config.refresh !== undefined ? this._config.refresh : 60,
       bull_color: this._config.bull_color || '',
@@ -152,9 +162,9 @@ class CryptoCardEditor extends HTMLElement {
         coins: d.coins ? d.coins.split(',').map(s => s.trim().toUpperCase()).filter(Boolean) : ['BTC', 'ETH'],
         quote: d.quote,
         interval: d.interval,
-        interval_buttons: d.interval_buttons ? d.interval_buttons.split(',').map(s => s.trim()).filter(Boolean) : ['1h','4h','1d'],
+        interval_buttons: Array.isArray(d.interval_buttons) ? d.interval_buttons : ['1h','4h','1d'],
         bars: d.bars,
-        bars_buttons: d.bars_buttons ? d.bars_buttons.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)) : [30,60,90],
+        bars_buttons: Array.isArray(d.bars_buttons) ? d.bars_buttons.map(Number) : [30,60,90],
         show_volume: d.show_volume,
         refresh: d.refresh,
       };
