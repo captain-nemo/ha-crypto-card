@@ -114,16 +114,8 @@ class CryptoCardEditor extends HTMLElement {
         name: 'refresh',
         label: 'Auto-refresh (seconds, 0 = off)',
         selector: { number: { min: 0, max: 3600, step: 30 } },
-      },
-      {
-        name: 'bull_color',
-        label: 'Bull candle color',
-        selector: { color_rgb: {} },
-      },
-      {
-        name: 'bear_color',
-        label: 'Bear candle color',
-        selector: { color_rgb: {} },
+      } },
+      } },
       },
       {
         name: 'title',
