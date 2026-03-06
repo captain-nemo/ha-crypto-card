@@ -77,24 +77,6 @@ class CryptoCardEditor extends HTMLElement {
         selector: { select: { options: ['USDT', 'EUR', 'USDC'] } },
       },
       {
-        name: 'interval',
-        label: 'Candle interval',
-        selector: {
-          select: {
-            options: [
-              { value: '1m',  label: '1 minute' },
-              { value: '5m',  label: '5 minutes' },
-              { value: '15m', label: '15 minutes' },
-              { value: '30m', label: '30 minutes' },
-              { value: '1h',  label: '1 hour' },
-              { value: '4h',  label: '4 hours' },
-              { value: '1d',  label: '1 day' },
-              { value: '1w',  label: '1 week' },
-            ],
-          },
-        },
-      },
-      {
         name: 'interval_buttons',
         label: 'Interval buttons',
         selector: {
@@ -137,7 +119,6 @@ class CryptoCardEditor extends HTMLElement {
     form.data = {
       coins: this._config.coins || ['BTC', 'ETH'],
       quote: this._config.quote || 'USDT',
-      interval: this._config.interval || '4h',
       interval_buttons: this._config.interval_buttons || ['1h','4h','1d'],
       bars_buttons: (this._config.bars_buttons || [30,60,90]).map(String),
       show_volume: this._config.show_volume || false,
@@ -151,7 +132,6 @@ class CryptoCardEditor extends HTMLElement {
         ...this._config,
         coins: Array.isArray(d.coins) ? d.coins : ['BTC', 'ETH'],
         quote: d.quote,
-        interval: d.interval || '4h',
         interval_buttons: Array.isArray(d.interval_buttons) ? d.interval_buttons : ['1h','4h','1d'],
         bars_buttons: Array.isArray(d.bars_buttons) ? d.bars_buttons.map(Number) : [30,60,90],
         show_volume: d.show_volume,
