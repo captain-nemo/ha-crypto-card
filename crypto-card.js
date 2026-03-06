@@ -63,8 +63,13 @@ class CryptoCardEditor extends HTMLElement {
     return [
       {
         name: 'coins',
-        label: 'Coins (comma-separated, e.g. BTC,ETH,SOL)',
-        selector: { text: {} },
+        label: 'Coins',
+        selector: {
+          select: {
+            multiple: true,
+            options: ['BTC','ETH','SOL','BNB','XRP','ADA','DOGE','AVAX','DOT','LINK','UNI','ATOM','LTC','BCH','NEAR','APT','ARB','OP','SUI','PEPE','SHIB'],
+          },
+        },
       },
       {
         name: 'quote',
@@ -131,7 +136,7 @@ class CryptoCardEditor extends HTMLElement {
     const form = this.shadowRoot.querySelector('ha-form');
     form.schema = this._schema;
     form.data = {
-      coins: (this._config.coins || ['BTC', 'ETH']).join(','),
+      coins: this._config.coins || ['BTC', 'ETH'],
       quote: this._config.quote || 'USDT',
       interval: this._config.interval || '4h',
       interval_buttons: this._config.interval_buttons || ['1h','4h','1d'],
@@ -146,7 +151,7 @@ class CryptoCardEditor extends HTMLElement {
       const d = e.detail.value;
       const newConfig = {
         ...this._config,
-        coins: d.coins ? d.coins.split(',').map(s => s.trim().toUpperCase()).filter(Boolean) : ['BTC', 'ETH'],
+        coins: Array.isArray(d.coins) ? d.coins : ['BTC', 'ETH'],
         quote: d.quote,
         interval: d.interval,
         interval_buttons: Array.isArray(d.interval_buttons) ? d.interval_buttons : ['1h','4h','1d'],
