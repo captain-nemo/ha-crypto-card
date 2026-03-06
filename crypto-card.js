@@ -173,7 +173,7 @@ class CryptoCardEditor extends HTMLElement {
         <span class="hint">Comma-separated — any Binance pair. Press Enter or click outside to apply.</span>
       </div>
       <ha-form></ha-form>
-    \`;
+    `;
 
     const input = this.shadowRoot.getElementById('coins-input');
     const applyCoins = () => {
