@@ -1,7 +1,16 @@
 /**
  * crypto-card — Home Assistant Lovelace custom card
- * Candlestick chart via Binance API (BTC/ETH)
+ * Candlestick chart via Binance API
+ * @version 2.0.0
  */
+
+const COIN_SYMBOLS = {
+  BTC: '₿', ETH: 'Ξ', SOL: '◎', BNB: 'BNB', XRP: 'XRP',
+  ADA: '₳', DOGE: 'Ð', AVAX: 'AVAX', DOT: 'DOT', LINK: 'LINK',
+  UNI: '🦄', ATOM: 'ATOM', LTC: 'Ł', BCH: 'BCH', NEAR: 'NEAR',
+};
+
+const QUOTE_PREFIX = { USDT: '$', USDC: '$', EUR: '€', BTC: '₿', ETH: 'Ξ' };
 
 const THEMES = {
   dark: {
@@ -40,46 +49,184 @@ const THEMES = {
   },
 };
 
+// ─── Editor ──────────────────────────────────────────────────────────────────
+
+class CryptoCardEditor extends HTMLElement {
+  static get properties() { return { hass: {}, _config: {} }; }
+
+  setConfig(config) {
+    this._config = config;
+    this._render();
+  }
+
+  get _schema() {
+    return [
+      {
+        name: 'coins',
+        label: 'Coins (comma-separated, e.g. BTC,ETH,SOL)',
+        selector: { text: {} },
+      },
+      {
+        name: 'quote',
+        label: 'Quote currency',
+        selector: { select: { options: ['USDT', 'EUR', 'USDC'] } },
+      },
+      {
+        name: 'interval',
+        label: 'Default interval',
+        selector: {
+          select: {
+            options: ['1m','5m','15m','30m','1h','2h','4h','8h','12h','1d','3d','1w','1M'],
+          },
+        },
+      },
+      {
+        name: 'bars',
+        label: 'Number of bars',
+        selector: { number: { min: 10, max: 200, step: 10 } },
+      },
+      {
+        name: 'show_volume',
+        label: 'Show volume bars',
+        selector: { boolean: {} },
+      },
+      {
+        name: 'refresh',
+        label: 'Auto-refresh (seconds, 0 = off)',
+        selector: { number: { min: 0, max: 3600, step: 30 } },
+      },
+      {
+        name: 'bull_color',
+        label: 'Bull candle color',
+        selector: { color_rgb: {} },
+      },
+      {
+        name: 'bear_color',
+        label: 'Bear candle color',
+        selector: { color_rgb: {} },
+      },
+      {
+        name: 'title',
+        label: 'Card title (optional)',
+        selector: { text: {} },
+      },
+    ];
+  }
+
+  _render() {
+    if (!this._config) return;
+    if (!this.shadowRoot) this.attachShadow({ mode: 'open' });
+
+    this.shadowRoot.innerHTML = `<ha-form></ha-form>`;
+    const form = this.shadowRoot.querySelector('ha-form');
+    form.schema = this._schema;
+    form.data = {
+      coins: (this._config.coins || ['BTC', 'ETH']).join(','),
+      quote: this._config.quote || 'USDT',
+      interval: this._config.interval || '4h',
+      bars: this._config.bars || 60,
+      show_volume: this._config.show_volume || false,
+      refresh: this._config.refresh !== undefined ? this._config.refresh : 60,
+      bull_color: this._config.bull_color || '',
+      bear_color: this._config.bear_color || '',
+      title: this._config.title || '',
+    };
+    form.hass = this.hass;
+
+    form.addEventListener('value-changed', (e) => {
+      const d = e.detail.value;
+      const newConfig = {
+        ...this._config,
+        coins: d.coins ? d.coins.split(',').map(s => s.trim().toUpperCase()).filter(Boolean) : ['BTC', 'ETH'],
+        quote: d.quote,
+        interval: d.interval,
+        bars: d.bars,
+        show_volume: d.show_volume,
+        refresh: d.refresh,
+      };
+      if (d.bull_color) newConfig.bull_color = d.bull_color;
+      if (d.bear_color) newConfig.bear_color = d.bear_color;
+      if (d.title) newConfig.title = d.title;
+      this.dispatchEvent(new CustomEvent('config-changed', {
+        detail: { config: newConfig },
+        bubbles: true,
+        composed: true,
+      }));
+    });
+  }
+}
+
+customElements.define('crypto-card-editor', CryptoCardEditor);
+
+// ─── Card ─────────────────────────────────────────────────────────────────────
+
 class CryptoCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
+    this._coins = ['BTC', 'ETH'];
     this._coin = 'BTC';
+    this._quote = 'USDT';
     this._interval = '4h';
     this._bars = 60;
+    this._showVolume = false;
+    this._refresh = 60;
+    this._bullColor = null;
+    this._bearColor = null;
+    this._title = null;
     this._timer = null;
     this._darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
     this._theme = this._darkQuery.matches ? THEMES.dark : THEMES.light;
     this._darkQuery.addEventListener('change', e => {
       this._theme = e.matches ? THEMES.dark : THEMES.light;
       this._applyTheme();
-      if (this._lastCandles) this._drawCandlesticks(this._lastCandles);
+      if (this._lastCandles) this._drawChart(this._lastCandles);
     });
+  }
+
+  static getConfigElement() { return document.createElement('crypto-card-editor'); }
+
+  static getStubConfig() {
+    return { coins: ['BTC', 'ETH'], quote: 'USDT', interval: '4h', bars: 60 };
   }
 
   setConfig(config) {
     this._config = config;
-    this._coin = config.coin || 'BTC';
+    this._coins = Array.isArray(config.coins) ? config.coins.map(c => c.toUpperCase())
+                  : typeof config.coins === 'string' ? config.coins.split(',').map(s => s.trim().toUpperCase())
+                  : ['BTC', 'ETH'];
+    // Legacy single-coin config
+    if (this._coins.length === 0 && config.coin) this._coins = [config.coin];
+    if (this._coins.length === 0) this._coins = ['BTC', 'ETH'];
+    this._coin = this._coins[0];
+    this._quote = config.quote || 'USDT';
     this._interval = config.interval || '4h';
     this._bars = config.bars || 60;
+    this._showVolume = config.show_volume || false;
+    this._refresh = config.refresh !== undefined ? config.refresh : 60;
+    this._bullColor = config.bull_color || null;
+    this._bearColor = config.bear_color || null;
+    this._title = config.title || null;
     this._render();
   }
 
-  set hass(hass) {
-    // Card is standalone, no HA entities needed
-  }
-
-  getCardSize() {
-    return 4;
-  }
+  set hass(_) {}
+  getCardSize() { return 4; }
 
   connectedCallback() {
     this._fetchCrypto();
-    this._timer = setInterval(() => this._fetchCrypto(), 60000);
+    if (this._refresh > 0) {
+      this._timer = setInterval(() => this._fetchCrypto(), this._refresh * 1000);
+    }
   }
 
   disconnectedCallback() {
     if (this._timer) clearInterval(this._timer);
+  }
+
+  _tabLabel(coin) {
+    const sym = COIN_SYMBOLS[coin];
+    return sym && sym !== coin ? `${sym} ${coin}` : coin;
   }
 
   _applyTheme() {
@@ -88,8 +235,10 @@ class CryptoCard extends HTMLElement {
     if (!card) return;
     card.style.background = t.bg;
     card.style.color = t.text;
-    this.shadowRoot.querySelector('.header').style.borderBottomColor = t.border;
-    this.shadowRoot.querySelector('.controls').style.borderTopColor = t.border;
+    const header = this.shadowRoot.querySelector('.header');
+    if (header) header.style.borderBottomColor = t.border;
+    const controls = this.shadowRoot.querySelector('.controls');
+    if (controls) controls.style.borderTopColor = t.border;
     this.shadowRoot.querySelectorAll('.tab').forEach(el => {
       const active = el.classList.contains('active');
       el.style.background = active ? t.tabActive : 'transparent';
@@ -105,18 +254,17 @@ class CryptoCard extends HTMLElement {
     this.shadowRoot.querySelectorAll('.ctrl-label').forEach(el => el.style.color = t.muted);
     const upd = this.shadowRoot.getElementById('updated');
     if (upd) upd.style.color = t.mutedMore;
-    const price = this.shadowRoot.getElementById('price');
-    if (price) price.style.color = t.text;
   }
 
   _render() {
     const t = this._theme;
+    const intervals = ['1h','4h','1d'];
+    const bars = [30, 60, 90];
+
     this.shadowRoot.innerHTML = `
       <style>
         :host { display: block; }
-        ha-card {
-          background: ${t.bg} !important;
-        }
+        ha-card { background: ${t.bg} !important; }
         .card {
           background: ${t.bg};
           border-radius: 12px;
@@ -132,13 +280,15 @@ class CryptoCard extends HTMLElement {
           align-items: center;
           padding: 8px 12px 6px;
           gap: 8px;
-          height: 42px;
+          min-height: 42px;
           box-sizing: border-box;
           border-bottom: 1px solid ${t.border};
         }
-        .tabs { display: flex; gap: 6px; }
+        .header-left { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+        .card-title { font-size: 10px; color: ${t.muted}; letter-spacing: 1px; text-transform: uppercase; }
+        .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
         .tab {
-          padding: 3px 12px;
+          padding: 3px 10px;
           border-radius: 6px;
           border: 1px solid ${t.border};
           font-size: 12px;
@@ -148,17 +298,9 @@ class CryptoCard extends HTMLElement {
           transition: all 0.2s;
           background: transparent;
         }
-        .tab.active {
-          background: ${t.tabActive};
-          color: ${t.tabActiveFg};
-          border-color: ${t.tabActive};
-        }
-        .price-info { flex: 1; text-align: right; }
-        .price {
-          font-size: 20px;
-          font-weight: 200;
-          color: ${t.text};
-        }
+        .tab.active { background: ${t.tabActive}; color: ${t.tabActiveFg}; border-color: ${t.tabActive}; }
+        .price-info { text-align: right; white-space: nowrap; }
+        .price { font-size: 20px; font-weight: 200; color: ${t.text}; }
         .change { font-size: 12px; margin-left: 6px; font-weight: 500; }
         .change.pos { color: ${t.green}; }
         .change.neg { color: ${t.red}; }
@@ -169,15 +311,11 @@ class CryptoCard extends HTMLElement {
           justify-content: space-between;
           padding: 5px 12px 7px;
           border-top: 1px solid ${t.border};
+          flex-wrap: wrap;
+          gap: 4px;
         }
         .ctrl-group { display: flex; gap: 4px; align-items: center; }
-        .ctrl-label {
-          font-size: 9px;
-          color: ${t.muted};
-          margin-right: 2px;
-          letter-spacing: 1px;
-          text-transform: uppercase;
-        }
+        .ctrl-label { font-size: 9px; color: ${t.muted}; margin-right: 2px; letter-spacing: 1px; text-transform: uppercase; }
         .ctrl-btn {
           padding: 3px 8px;
           border-radius: 5px;
@@ -188,36 +326,36 @@ class CryptoCard extends HTMLElement {
           transition: all 0.2s;
           background: transparent;
         }
-        .ctrl-btn.active {
-          background: ${t.btnActive};
-          color: ${t.btnActiveFg};
-          border-color: ${t.btnActiveBorder};
-        }
+        .ctrl-btn.active { background: ${t.btnActive}; color: ${t.btnActiveFg}; border-color: ${t.btnActiveBorder}; }
         .updated { font-size: 10px; color: ${t.mutedMore}; }
       </style>
       <ha-card>
         <div class="card">
           <div class="header">
-            <div class="tabs">
-              <div class="tab ${this._coin === 'BTC' ? 'active' : ''}" data-coin="BTC">₿ BTC</div>
-              <div class="tab ${this._coin === 'ETH' ? 'active' : ''}\" data-coin="ETH">Ξ ETH</div>
+            <div class="header-left">
+              ${this._title ? `<div class="card-title">${this._title}</div>` : ''}
+              <div class="tabs">
+                ${this._coins.map(c => `
+                  <div class="tab ${c === this._coin ? 'active' : ''}" data-coin="${c}">${this._tabLabel(c)}</div>
+                `).join('')}
+              </div>
             </div>
             <div class="price-info">
-              <span class="price" id="price">$--</span>
+              <span class="price" id="price">--</span>
               <span class="change pos" id="change">--%</span>
             </div>
           </div>
-          <canvas id="chart" height="200"></canvas>
+          <canvas id="chart" height="${this._showVolume ? 220 : 200}"></canvas>
           <div class="controls">
             <div class="ctrl-group">
               <span class="ctrl-label">Interval</span>
-              ${['1h','4h','1d'].map(iv => `
+              ${intervals.map(iv => `
                 <div class="ctrl-btn ${this._interval === iv ? 'active' : ''}" data-interval="${iv}">${iv}</div>
               `).join('')}
             </div>
             <div class="ctrl-group">
               <span class="ctrl-label">Bars</span>
-              ${[30,60,90].map(b => `
+              ${bars.map(b => `
                 <div class="ctrl-btn ${this._bars === b ? 'active' : ''}" data-bars="${b}">${b}</div>
               `).join('')}
             </div>
@@ -227,7 +365,6 @@ class CryptoCard extends HTMLElement {
       </ha-card>
     `;
 
-    // Event listeners
     this.shadowRoot.querySelectorAll('.tab').forEach(el => {
       el.addEventListener('click', () => {
         this._coin = el.dataset.coin;
@@ -252,23 +389,25 @@ class CryptoCard extends HTMLElement {
   }
 
   async _fetchCrypto() {
-    const symbols = { BTC: 'BTCUSDT', ETH: 'ETHUSDT' };
-    const url = `https://api.binance.com/api/v3/klines?symbol=${symbols[this._coin]}&interval=${this._interval}&limit=${this._bars}`;
+    const symbol = `${this._coin}${this._quote}`;
+    const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${this._interval}&limit=${this._bars}`;
     try {
       const data = await (await fetch(url)).json();
       if (!Array.isArray(data)) throw new Error('Invalid response');
       const candles = data.map(k => ({
         o: parseFloat(k[1]), h: parseFloat(k[2]),
-        l: parseFloat(k[3]), c: parseFloat(k[4])
+        l: parseFloat(k[3]), c: parseFloat(k[4]),
+        v: parseFloat(k[5]),
       }));
       const last = candles[candles.length - 1];
       const change = ((last.c - candles[0].o) / candles[0].o) * 100;
+      const prefix = QUOTE_PREFIX[this._quote] || '';
 
       const priceEl = this.shadowRoot.getElementById('price');
       const changeEl = this.shadowRoot.getElementById('change');
       const updatedEl = this.shadowRoot.getElementById('updated');
 
-      if (priceEl) priceEl.textContent = this._fmtPrice(last.c);
+      if (priceEl) priceEl.textContent = this._fmtPrice(last.c, prefix);
       if (changeEl) {
         changeEl.textContent = (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
         changeEl.className = 'change ' + (change >= 0 ? 'pos' : 'neg');
@@ -278,7 +417,7 @@ class CryptoCard extends HTMLElement {
         updatedEl.textContent = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
       }
       this._lastCandles = candles;
-      this._drawCandlesticks(candles);
+      this._drawChart(candles);
     } catch (err) {
       const canvas = this.shadowRoot.getElementById('chart');
       if (canvas) {
@@ -287,44 +426,52 @@ class CryptoCard extends HTMLElement {
         ctx.fillStyle = 'rgba(255,255,255,0.25)';
         ctx.font = '12px system-ui';
         ctx.textAlign = 'center';
-        ctx.fillText('API onbereikbaar', canvas.width / 2, canvas.height / 2);
+        ctx.fillText('API unavailable', canvas.width / 2, canvas.height / 2);
       }
     }
   }
 
-  _fmtPrice(p) {
-    return p >= 1000
-      ? '$' + p.toLocaleString('nl-NL', { maximumFractionDigits: 0 })
-      : '$' + p.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  _fmtPrice(p, prefix = '$') {
+    if (p >= 1000) return prefix + p.toLocaleString('en-US', { maximumFractionDigits: 0 });
+    if (p >= 1)    return prefix + p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return prefix + p.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 6 });
   }
 
-  _fmtPriceShort(p) {
-    return p >= 1000 ? '$' + (p / 1000).toFixed(1) + 'k' : '$' + p.toFixed(0);
+  _fmtPriceShort(p, prefix = '$') {
+    if (p >= 1000) return prefix + (p / 1000).toFixed(1) + 'k';
+    if (p >= 1)    return prefix + p.toFixed(2);
+    return prefix + p.toFixed(4);
   }
 
-  _drawCandlesticks(candles) {
+  _drawChart(candles) {
     const canvas = this.shadowRoot.getElementById('chart');
     if (!canvas) return;
 
     const W = canvas.offsetWidth || 400;
-    const H = 200;
+    const H = this._showVolume ? 220 : 200;
     canvas.width = W;
     canvas.height = H;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, W, H);
     if (!candles.length) return;
 
-    const PAD_L = 4, PAD_R = 44, PAD_T = 10, PAD_B = 16;
-    const chartW = W - PAD_L - PAD_R;
-    const chartH = H - PAD_T - PAD_B;
-    const minP   = Math.min(...candles.map(c => c.l));
-    const maxP   = Math.max(...candles.map(c => c.h));
-    const range  = maxP - minP || 1;
-    const toY    = p => PAD_T + chartH - ((p - minP) / range) * chartH;
-    const step   = chartW / candles.length;
-    const bodyW  = Math.max(1, Math.floor(step * 0.65));
-
     const t = this._theme;
+    const prefix = QUOTE_PREFIX[this._quote] || '';
+    const bullColor = this._bullColor || t.green;
+    const bearColor = this._bearColor || t.red;
+
+    const VOL_H   = this._showVolume ? Math.floor(H * 0.2) : 0;
+    const PAD_L   = 4, PAD_R = 44, PAD_T = 10, PAD_B = 16;
+    const chartH  = H - PAD_T - PAD_B - VOL_H;
+    const chartW  = W - PAD_L - PAD_R;
+
+    const minP    = Math.min(...candles.map(c => c.l));
+    const maxP    = Math.max(...candles.map(c => c.h));
+    const range   = maxP - minP || 1;
+    const toY     = p => PAD_T + chartH - ((p - minP) / range) * chartH;
+
+    const step    = chartW / candles.length;
+    const bodyW   = Math.max(1, Math.floor(step * 0.65));
 
     // Grid
     ctx.strokeStyle = t.gridLine;
@@ -338,16 +485,16 @@ class CryptoCard extends HTMLElement {
       ctx.moveTo(PAD_L, y);
       ctx.lineTo(W - PAD_R + 4, y);
       ctx.stroke();
-      ctx.fillText(this._fmtPriceShort(maxP - (range / 3) * i), W - PAD_R + 6, y + 3);
+      ctx.fillText(this._fmtPriceShort(maxP - (range / 3) * i, prefix), W - PAD_R + 6, y + 3);
     }
 
     // Candles
     candles.forEach((c, i) => {
-      const cx    = PAD_L + step * i + step / 2;
-      const isUp  = c.c >= c.o;
-      const color = isUp ? t.green : t.red;
-      const top   = toY(Math.max(c.o, c.c));
-      const bot   = toY(Math.min(c.o, c.c));
+      const cx   = PAD_L + step * i + step / 2;
+      const isUp = c.c >= c.o;
+      const color = isUp ? bullColor : bearColor;
+      const top  = toY(Math.max(c.o, c.c));
+      const bot  = toY(Math.min(c.o, c.c));
       ctx.fillStyle = ctx.strokeStyle = color;
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -366,7 +513,31 @@ class CryptoCard extends HTMLElement {
     ctx.lineTo(W - PAD_R + 4, ly);
     ctx.stroke();
     ctx.setLineDash([]);
+
+    // Volume bars
+    if (this._showVolume && VOL_H > 0) {
+      const maxVol = Math.max(...candles.map(c => c.v));
+      const volTop = H - PAD_B - VOL_H;
+      candles.forEach((c, i) => {
+        const cx   = PAD_L + step * i + step / 2;
+        const isUp = c.c >= c.o;
+        const color = isUp ? bullColor : bearColor;
+        const vh   = Math.max(1, (c.v / maxVol) * (VOL_H - 4));
+        ctx.globalAlpha = 0.35;
+        ctx.fillStyle = color;
+        ctx.fillRect(cx - bodyW / 2, volTop + VOL_H - vh, bodyW, vh);
+      });
+      ctx.globalAlpha = 1;
+    }
   }
 }
 
 customElements.define('crypto-card', CryptoCard);
+window.customCards = window.customCards || [];
+window.customCards.push({
+  type: 'crypto-card',
+  name: 'Crypto Card',
+  description: 'Candlestick chart card for BTC, ETH and other Binance-listed coins',
+  preview: true,
+  documentationURL: 'https://github.com/captain-nemo/ha-crypto-card',
+});
