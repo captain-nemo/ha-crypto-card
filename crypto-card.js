@@ -1,7 +1,7 @@
 /**
  * crypto-card — Home Assistant Lovelace custom card
  * Candlestick chart via Binance API
- * @version 2.0.0
+ * @version 2.1.0
  */
 
 const COIN_SYMBOLS = {
@@ -81,9 +81,19 @@ class CryptoCardEditor extends HTMLElement {
         },
       },
       {
+        name: 'interval_buttons',
+        label: 'Interval buttons (comma-separated, e.g. 1h,4h,1d)',
+        selector: { text: {} },
+      },
+      {
         name: 'bars',
-        label: 'Number of bars',
+        label: 'Default number of bars',
         selector: { number: { min: 10, max: 200, step: 10 } },
+      },
+      {
+        name: 'bars_buttons',
+        label: 'Bar count buttons (comma-separated, e.g. 30,60,90)',
+        selector: { text: {} },
       },
       {
         name: 'show_volume',
@@ -124,7 +134,9 @@ class CryptoCardEditor extends HTMLElement {
       coins: (this._config.coins || ['BTC', 'ETH']).join(','),
       quote: this._config.quote || 'USDT',
       interval: this._config.interval || '4h',
+      interval_buttons: (this._config.interval_buttons || ['1h','4h','1d']).join(','),
       bars: this._config.bars || 60,
+      bars_buttons: (this._config.bars_buttons || [30,60,90]).join(','),
       show_volume: this._config.show_volume || false,
       refresh: this._config.refresh !== undefined ? this._config.refresh : 60,
       bull_color: this._config.bull_color || '',
@@ -140,7 +152,9 @@ class CryptoCardEditor extends HTMLElement {
         coins: d.coins ? d.coins.split(',').map(s => s.trim().toUpperCase()).filter(Boolean) : ['BTC', 'ETH'],
         quote: d.quote,
         interval: d.interval,
+        interval_buttons: d.interval_buttons ? d.interval_buttons.split(',').map(s => s.trim()).filter(Boolean) : ['1h','4h','1d'],
         bars: d.bars,
+        bars_buttons: d.bars_buttons ? d.bars_buttons.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)) : [30,60,90],
         show_volume: d.show_volume,
         refresh: d.refresh,
       };
@@ -169,6 +183,8 @@ class CryptoCard extends HTMLElement {
     this._quote = 'USDT';
     this._interval = '4h';
     this._bars = 60;
+    this._intervalButtons = ['1h','4h','1d'];
+    this._barsButtons = [30,60,90];
     this._showVolume = false;
     this._refresh = 60;
     this._bullColor = null;
@@ -187,7 +203,7 @@ class CryptoCard extends HTMLElement {
   static getConfigElement() { return document.createElement('crypto-card-editor'); }
 
   static getStubConfig() {
-    return { coins: ['BTC', 'ETH'], quote: 'USDT', interval: '4h', bars: 60 };
+    return { coins: ['BTC', 'ETH'], quote: 'USDT', interval: '4h', interval_buttons: ['1h','4h','1d'], bars: 60, bars_buttons: [30,60,90] };
   }
 
   setConfig(config) {
@@ -201,7 +217,18 @@ class CryptoCard extends HTMLElement {
     this._coin = this._coins[0];
     this._quote = config.quote || 'USDT';
     this._interval = config.interval || '4h';
+    this._intervalButtons = Array.isArray(config.interval_buttons) ? config.interval_buttons
+                            : typeof config.interval_buttons === 'string' ? config.interval_buttons.split(',').map(s => s.trim()).filter(Boolean)
+                            : ['1h','4h','1d'];
     this._bars = config.bars || 60;
+    this._barsButtons = Array.isArray(config.bars_buttons) ? config.bars_buttons.map(Number)
+                        : typeof config.bars_buttons === 'string' ? config.bars_buttons.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n))
+                        : [30,60,90];
+    // Ensure selected values exist in button sets; fall back to first option
+    if (this._intervalButtons.length && !this._intervalButtons.includes(this._interval))
+      this._interval = this._intervalButtons[0];
+    if (this._barsButtons.length && !this._barsButtons.includes(this._bars))
+      this._bars = this._barsButtons[0];
     this._showVolume = config.show_volume || false;
     this._refresh = config.refresh !== undefined ? config.refresh : 60;
     this._bullColor = config.bull_color || null;
@@ -258,8 +285,8 @@ class CryptoCard extends HTMLElement {
 
   _render() {
     const t = this._theme;
-    const intervals = ['1h','4h','1d'];
-    const bars = [30, 60, 90];
+    const intervals = this._intervalButtons;
+    const bars = this._barsButtons;
 
     this.shadowRoot.innerHTML = `
       <style>

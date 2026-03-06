@@ -98,7 +98,17 @@ coins:
   - SOL
 quote: EUR
 interval: 1d
+interval_buttons:
+  - 1h
+  - 4h
+  - 1d
+  - 1w
 bars: 90
+bars_buttons:
+  - 30
+  - 60
+  - 90
+  - 120
 show_volume: true
 refresh: 120
 bull_color: "#00e676"
@@ -110,8 +120,10 @@ title: My Portfolio
 |--------|------|---------|-------------|
 | `coins` | `list` | `[BTC, ETH]` | Coins to show as tabs (any Binance pair) |
 | `quote` | `string` | `USDT` | Quote currency: `USDT`, `EUR`, `USDC` |
-| `interval` | `string` | `4h` | Default interval: `1m` `5m` `15m` `30m` `1h` `2h` `4h` `8h` `12h` `1d` `3d` `1w` `1M` |
-| `bars` | `number` | `60` | Number of candles (10–200) |
+| `interval` | `string` | `4h` | Active interval at load: `1m` `5m` `15m` `30m` `1h` `2h` `4h` `8h` `12h` `1d` `3d` `1w` `1M` |
+| `interval_buttons` | `list` | `[1h, 4h, 1d]` | Which interval buttons to show |
+| `bars` | `number` | `60` | Active bar count at load (10–200) |
+| `bars_buttons` | `list` | `[30, 60, 90]` | Which bar count buttons to show |
 | `show_volume` | `boolean` | `false` | Show volume bars below chart |
 | `refresh` | `number` | `60` | Auto-refresh in seconds (0 = off) |
 | `bull_color` | `string` | theme green | Up candle color (hex) |
