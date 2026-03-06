@@ -63,7 +63,7 @@ class CryptoCardEditor extends HTMLElement {
     return [
       {
         name: 'coins',
-        label: 'Coins',
+        label: 'Cryptocurrencies',
         selector: {
           select: {
             multiple: true,
@@ -73,12 +73,12 @@ class CryptoCardEditor extends HTMLElement {
       },
       {
         name: 'quote',
-        label: 'Quote currency',
+        label: 'Valuta',
         selector: { select: { options: ['USDT', 'EUR', 'USDC'] } },
       },
       {
         name: 'interval',
-        label: 'Default interval',
+        label: 'Standaard interval',
         selector: {
           select: {
             options: ['1m','5m','15m','30m','1h','2h','4h','8h','12h','1d','3d','1w','1M'],
@@ -87,7 +87,7 @@ class CryptoCardEditor extends HTMLElement {
       },
       {
         name: 'interval_buttons',
-        label: 'Interval buttons',
+        label: 'Interval knoppen',
         selector: {
           select: {
             multiple: true,
@@ -97,12 +97,12 @@ class CryptoCardEditor extends HTMLElement {
       },
       {
         name: 'bars',
-        label: 'Default number of bars',
+        label: 'Standaard aantal candles',
         selector: { number: { min: 10, max: 200, step: 10 } },
       },
       {
         name: 'bars_buttons',
-        label: 'Bar count buttons',
+        label: 'Aantal candles knoppen',
         selector: {
           select: {
             multiple: true,
@@ -112,17 +112,18 @@ class CryptoCardEditor extends HTMLElement {
       },
       {
         name: 'show_volume',
-        label: 'Show volume bars',
+        label: 'Volume bars weergeven',
         selector: { boolean: {} },
       },
       {
         name: 'refresh',
-        label: 'Auto-refresh (seconds, 0 = off)',
-        selector: { number: { min: 0, max: 3600, step: 30 } },
+        label: 'Auto-refresh',
+        helper: 'Hoe vaak de koers wordt ververst (in seconden). Stel in op 0 om automatisch verversen uit te zetten.',
+        selector: { number: { min: 0, max: 3600, step: 30, unit_of_measurement: 'seconden' } },
       },
       {
         name: 'title',
-        label: 'Card title (optional)',
+        label: 'Kaart titel (optioneel)',
         selector: { text: {} },
       },
     ];
