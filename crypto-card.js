@@ -114,8 +114,6 @@ class CryptoCardEditor extends HTMLElement {
         name: 'refresh',
         label: 'Auto-refresh (seconds, 0 = off)',
         selector: { number: { min: 0, max: 3600, step: 30 } },
-      } },
-      } },
       },
       {
         name: 'title',
