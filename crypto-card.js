@@ -63,7 +63,7 @@ class CryptoCardEditor extends HTMLElement {
     return [
       {
         name: 'coins',
-        label: 'Cryptocurrencies',
+        label: 'Coins',
         selector: {
           select: {
             multiple: true,
@@ -73,21 +73,12 @@ class CryptoCardEditor extends HTMLElement {
       },
       {
         name: 'quote',
-        label: 'Valuta',
+        label: 'Quote currency',
         selector: { select: { options: ['USDT', 'EUR', 'USDC'] } },
       },
       {
-        name: 'interval',
-        label: 'Standaard interval',
-        selector: {
-          select: {
-            options: ['1m','5m','15m','30m','1h','2h','4h','8h','12h','1d','3d','1w','1M'],
-          },
-        },
-      },
-      {
         name: 'interval_buttons',
-        label: 'Interval knoppen',
+        label: 'Interval buttons',
         selector: {
           select: {
             multiple: true,
@@ -97,12 +88,12 @@ class CryptoCardEditor extends HTMLElement {
       },
       {
         name: 'bars',
-        label: 'Standaard aantal candles',
+        label: 'Number of bars',
         selector: { number: { min: 10, max: 200, step: 10 } },
       },
       {
         name: 'bars_buttons',
-        label: 'Aantal candles knoppen',
+        label: 'Bar count buttons',
         selector: {
           select: {
             multiple: true,
@@ -112,18 +103,17 @@ class CryptoCardEditor extends HTMLElement {
       },
       {
         name: 'show_volume',
-        label: 'Volume bars weergeven',
+        label: 'Show volume bars',
         selector: { boolean: {} },
       },
       {
         name: 'refresh',
-        label: 'Auto-refresh',
-        helper: 'Hoe vaak de koers wordt ververst (in seconden). Stel in op 0 om automatisch verversen uit te zetten.',
-        selector: { number: { min: 0, max: 3600, step: 30, unit_of_measurement: 'seconden' } },
+        label: 'Auto-refresh interval',
+        selector: { number: { min: 0, max: 3600, step: 30, unit_of_measurement: 'seconds' } },
       },
       {
         name: 'title',
-        label: 'Kaart titel (optioneel)',
+        label: 'Card title (optional)',
         selector: { text: {} },
       },
     ];
@@ -139,9 +129,7 @@ class CryptoCardEditor extends HTMLElement {
     form.data = {
       coins: this._config.coins || ['BTC', 'ETH'],
       quote: this._config.quote || 'USDT',
-      interval: this._config.interval || '4h',
       interval_buttons: this._config.interval_buttons || ['1h','4h','1d'],
-      bars: this._config.bars || 60,
       bars_buttons: (this._config.bars_buttons || [30,60,90]).map(String),
       show_volume: this._config.show_volume || false,
       refresh: this._config.refresh !== undefined ? this._config.refresh : 60,      title: this._config.title || '',
@@ -154,18 +142,19 @@ class CryptoCardEditor extends HTMLElement {
         ...this._config,
         coins: Array.isArray(d.coins) ? d.coins : ['BTC', 'ETH'],
         quote: d.quote,
-        interval: d.interval,
         interval_buttons: Array.isArray(d.interval_buttons) ? d.interval_buttons : ['1h','4h','1d'],
-        bars: d.bars,
         bars_buttons: Array.isArray(d.bars_buttons) ? d.bars_buttons.map(Number) : [30,60,90],
         show_volume: d.show_volume,
         refresh: d.refresh,
       };      if (d.title) newConfig.title = d.title;
-      this.dispatchEvent(new CustomEvent('config-changed', {
-        detail: { config: newConfig },
-        bubbles: true,
-        composed: true,
-      }));
+      clearTimeout(this._debounce);
+      this._debounce = setTimeout(() => {
+        this.dispatchEvent(new CustomEvent('config-changed', {
+          detail: { config: newConfig },
+          bubbles: true,
+          composed: true,
+        }));
+      }, 300);
     });
   }
 }
