@@ -137,70 +137,26 @@ class CryptoCardEditor extends HTMLElement {
     if (!this._config) return;
     if (!this.shadowRoot) this.attachShadow({ mode: 'open' });
 
-    // Coins field is rendered separately to avoid focus-loss on every keystroke.
-    // It only fires config-changed on blur or Enter.
-    this.shadowRoot.innerHTML = `
-      <style>
-        .coins-row {
-          padding: 8px 16px 4px;
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-        }
-        .coins-row label {
-          font-size: 12px;
-          color: var(--secondary-text-color, #888);
-        }
-        .coins-row input {
-          width: 100%;
-          box-sizing: border-box;
-          padding: 8px 12px;
-          border: 1px solid var(--divider-color, #e0e0e0);
-          border-radius: 4px;
-          font-size: 14px;
-          background: var(--card-background-color, #fff);
-          color: var(--primary-text-color, #000);
-          outline: none;
-        }
-        .coins-row input:focus { border-color: var(--primary-color, #03a9f4); }
-        .coins-row .hint { font-size: 11px; color: var(--secondary-text-color, #888); }
-      </style>
-      <div class="coins-row">
-        <label>Coins</label>
-        <input id="coins-input" type="text"
-          value="${(this._config.coins || ['BTC','ETH']).join(', ')}"
-          placeholder="BTC, ETH, SOL" />
-        <span class="hint">Comma-separated — any Binance pair. Press Enter or click outside to apply.</span>
-      </div>
-      <ha-form></ha-form>
-    `;
-
-    const input = this.shadowRoot.getElementById('coins-input');
-    const applyCoins = () => {
-      const coins = input.value.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
-      if (!coins.length) return;
-      this._fireConfig({ coins });
-    };
-    input.addEventListener('blur', applyCoins);
-    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyCoins(); input.blur(); } });
-
+    this.shadowRoot.innerHTML = `<ha-form></ha-form>`;
     const form = this.shadowRoot.querySelector('ha-form');
     form.schema = this._schema;
     form.data = {
+      coins: (this._config.coins || ['BTC', 'ETH']).join(','),
       quote: this._config.quote || 'USDT',
       interval: this._config.interval || '4h',
       interval_buttons: this._config.interval_buttons || ['1h','4h','1d'],
       bars: this._config.bars || 60,
       bars_buttons: (this._config.bars_buttons || [30,60,90]).map(String),
       show_volume: this._config.show_volume || false,
-      refresh: this._config.refresh !== undefined ? this._config.refresh : 60,
-      title: this._config.title || '',
+      refresh: this._config.refresh !== undefined ? this._config.refresh : 60,      title: this._config.title || '',
     };
     form.hass = this.hass;
 
     form.addEventListener('value-changed', (e) => {
       const d = e.detail.value;
-      this._fireConfig({
+      const newConfig = {
+        ...this._config,
+        coins: d.coins ? d.coins.split(',').map(s => s.trim().toUpperCase()).filter(Boolean) : ['BTC', 'ETH'],
         quote: d.quote,
         interval: d.interval,
         interval_buttons: Array.isArray(d.interval_buttons) ? d.interval_buttons : ['1h','4h','1d'],
@@ -208,19 +164,16 @@ class CryptoCardEditor extends HTMLElement {
         bars_buttons: Array.isArray(d.bars_buttons) ? d.bars_buttons.map(Number) : [30,60,90],
         show_volume: d.show_volume,
         refresh: d.refresh,
-        ...(d.title ? { title: d.title } : {}),
-      });
+      };      if (d.title) newConfig.title = d.title;
+      this.dispatchEvent(new CustomEvent('config-changed', {
+        detail: { config: newConfig },
+        bubbles: true,
+        composed: true,
+      }));
     });
   }
-
-  _fireConfig(patch) {
-    this.dispatchEvent(new CustomEvent('config-changed', {
-      detail: { config: { ...this._config, ...patch } },
-      bubbles: true,
-      composed: true,
-    }));
-  }
 }
+
 customElements.define('crypto-card-editor', CryptoCardEditor);
 
 // ─── Card ─────────────────────────────────────────────────────────────────────
